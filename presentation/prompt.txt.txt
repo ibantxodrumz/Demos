@@ -1,0 +1,280 @@
+prompt.md
+Purpose: Generate a complete Streamlit application (pn_accuracy_dashboard.py) implementing a full BMU PN‑accuracy dashboard using fixed annual and monthly summary CSV files.
+
+TITLE:
+Generate Full Streamlit PN‑Accuracy Dashboard Application
+
+INSTRUCTIONS FOR THE AGENT
+You are to generate a full working Python Streamlit application named:
+pn_accuracy_dashboard.py
+
+This app must run end‑to‑end without missing imports, without TODOs, and without requiring manual fixes.
+The user will paste your full output into a .py file.
+
+=========================================================
+1. APPLICATION PURPOSE
+=========================================================
+Build a Streamlit dashboard for analysing PN accuracy of BMUs (Balancing Mechanism Units) for the year 2025, using two fixed CSV files uploaded by the user:
+
+annual_summary_2025.csv
+monthly_summary_2025.csv
+
+The dashboard must allow analysts and data scientists to:
+
+Explore annual performance
+Compare fuels
+Explore BMUs
+Detect outliers
+Visualise errors
+Export filtered results
+
+
+=========================================================
+2. FILE SCHEMAS (IMPORTANT)
+=========================================================
+Annual file (annual_summary_2025.csv) columns
+nationalGridBmUnit
+PNLevel
+MELLevel
+MILLevel
+BidVolume
+OfferVolume
+Metered
+ExpectOT
+CapacityCalibrated
+NetError
+ABSError
+max_M_ABS_NetError%
+installedCapacity_mwh
+FUEL_I
+A_NetError%
+A_ABS_NetError%
+Rank_A_ABS_NetError%
+PctRank_A_ABS_NetError%
+
+→ All numeric fields must be coerced to float.
+→ Add columns:
+BMU = nationalGridBmUnit (string)
+Fuel = FUEL_I (string)
+Year = 2025
+Grain = "annual"
+
+
+Monthly file (monthly_summary_2025.csv) columns
+year_month            e.g., "2025-1", "2025-2"
+nationalGridBmUnit
+PNLevel
+MELLevel
+MILLevel
+BidVolume
+OfferVolume
+Metered
+ExpectOT
+CapacityCalibrated
+NetError
+ABSError
+installedCapacity_mwh
+FUEL_I
+M_NetError%
+M_ABS_NetError%
+Rank_M_ABS_NetError%
+PctRank_M_ABS_NetError%
+
+Date parsing requirement
+year_month must be transformed as:
+
+Zero‑pad months (e.g., 2025-1 → 2025-01)
+YearMonth = to_datetime("%Y-%m")
+Year = YearMonth.year
+Month = YearMonth.month
+MonthName = YearMonth.month_name()
+
+Add:
+BMU = nationalGridBmUnit (string)
+Fuel = FUEL_I (string)
+Grain = "monthly"
+
+
+=========================================================
+3. REQUIRED LOGIC
+=========================================================
+3.1 P90 Calculations
+Monthly P90:
+P90_monthly_error = 90th percentile of M_ABS_NetError% per BMU
+
+Merge into annual dataframe.
+
+3.2 “Needs Attention” Logic
+A BMU requires attention if:
+A_ABS_NetError% >= 25
+OR
+P90_monthly_error >= 25
+
+Create Boolean column:
+NeedsAttention (True/False)
+
+
+3.3 Error Band Classification
+For Fleet Overview tab:
+0–1%
+1–2%
+2–4%
+4–10%
+>10%
+
+
+=========================================================
+4. UI STRUCTURE
+=========================================================
+The app must use a single Streamlit page with 6 main tabs, in this order:
+
+TAB 1 — Executive Summary
+Includes:
+KPIs:
+
+Fleet median A_ABS_NetError%
+Fleet P90 A_ABS_NetError%
+Fleet max
+Number of BMUs
+
+Visuals:
+
+Heatmap: median error by fuel
+Heatmap: P90 error by fuel
+Fleet-wide error distribution histogram
+Treemap: Fuel → BMU → Error
+
+
+TAB 2 — Fleet Overview
+Includes:
+
+Error-band composition chart
+Fleet-wide histogram
+Capacity vs Error bubble chart
+Full filtered table
+Export button
+
+
+TAB 3 — By Technology
+UI:
+Dropdown selector for fuel.
+Content:
+
+Fuel-level KPIs:
+
+Median annual error
+Annual P90
+Monthly P90 (if available)
+Count of BMUs
+Worst BMU
+Count needing attention
+
+
+Distribution histogram (annual)
+Distribution histogram (monthly if exists)
+Monthly trend line (median & P90)
+Top & Bottom 10 BMUs
+Export filtered fuel data
+
+
+TAB 4 — BMU Explorer
+UI:
+Dropdown/search box for BMU.
+Content:
+
+Annual metrics
+Monthly trend sparkline
+Table of monthly rows
+Export BMU profile
+
+
+TAB 5 — Attention Needed
+Display only BMUs where:
+NeedsAttention == True
+
+For each fuel:
+
+Table of flagged BMUs
+Reason column:
+
+Annual ≥25%
+Monthly P90 ≥25%
+
+
+Link/trigger to open BMU Explorer for that BMU
+
+Export button.
+
+TAB 6 — Exports
+Allow user to export:
+
+Annual summary with P90 + attention flag
+Monthly summary cleaned
+Filtered views from tabs as CSV
+
+
+=========================================================
+5. VISUALS REQUIRED
+=========================================================
+Must include:
+
+Histogram (Plotly)
+Treemap (Plotly)
+Bubble chart
+Heatmaps (using imshow)
+Monthly trend lines
+Per-fuel histograms
+
+Style:
+
+White background
+Dark text
+Use helper function force_light(fig)
+
+
+=========================================================
+6. SIDEBAR
+=========================================================
+Sidebar must include:
+
+File upload:
+
+annual_summary_2025.csv
+monthly_summary_2025.csv
+
+
+Filters:
+
+Fuel multiselect
+BMU multiselect
+Checkbox: “Needs attention only”
+
+
+Divider lines
+App branding header
+
+
+=========================================================
+7. APP REQUIREMENTS
+=========================================================
+
+Must run in Streamlit with no errors
+Must include all imports
+Must use @st.cache_data for loaders
+Must fail gracefully if monthly file missing
+Must never reference external services
+Must structure code cleanly with section comments
+Must produce a full single-file app
+
+
+=========================================================
+8. OUTPUT FORMAT
+=========================================================
+Your entire response MUST be only the final Python code for:
+pn_accuracy_dashboard.py
+
+No explanations.
+No commentary.
+Just code.
+
+END OF prompt.md
