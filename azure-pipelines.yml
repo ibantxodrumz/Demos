@@ -1,0 +1,88 @@
+trigger:
+  branches:
+    include:
+      - '*'
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  name: ado-linux-uk-agent
+
+variables:
+  - name: projectName
+    value: 'ESO_DAP_NCMM_ImportConstraints'
+
+  - name: deployTarget
+    ${{ if eq( variables['Build.SourceBranchName'], 'main' ) }}:
+      value: PROD
+    ${{ else }}:
+      value: DEV
+
+  - template: variables/${{ variables.deployTarget }}.vars.yml
+
+resources:
+  repositories:
+    - repository: ddtd_dev_ops_tests
+      type: git
+      name: ESO-DAP-AAEs/ddtd_dev_ops_tests
+      ref: refs/heads/develop
+
+# ---------------------------
+# 1) CI STAGE (unmodified)
+# ---------------------------
+stages:
+  - template: setup/.azure-pipelines/azure-pipelines_python.yml@ddtd_dev_ops_tests
+    parameters:
+      projectName: ${{ variables.projectName }}
+      backend: pip
+
+# ---------------------------------------------------------
+# 2) AML DEPLOYMENT STAGE (FIXED!)
+# ---------------------------------------------------------
+  - stage: Deploy_AML_${{ variables.projectName }}
+    displayName: "Deploy AML Pipeline"
+    dependsOn: Code_Scanning_${{ variables.projectName }}
+    # Run this stage ONLY when pushing to main or develop
+    condition: >
+      and(
+        succeeded(),
+        or(
+          eq(variables['Build.SourceBranch'], 'refs/heads/main'),
+          eq(variables['Build.SourceBranch'], 'refs/heads/develop')
+        )
+      )
+
+    jobs:
+      - job: Register_AML
+        displayName: "Register AML environment, component, and schedule"
+        steps:
+
+          # ---------------------------
+          # Install required SDKs
+          # ---------------------------
+          - script: |
+              curl -o get-pip.py https://bootstrap.pypa.io/pip/3.8/get-pip.py && python3 get-pip.py
+              python3 -m pip install azure-ai-ml azure-identity
+            displayName: "Install AML SDK dependencies"
+
+          # ---------------------------
+          # Run your registration script
+          # ---------------------------
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: ${{ variables.serviceConnection }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Running AML registration..."
+                python3 -u setup/register_aml_job.py \
+                  --environment icm_env \
+                  --subscription_id $(subscription_id) \
+                  --resource_group $(resource_group) \
+                  --workspace $(workspace_name) \
+                  --pat_token $(System.AccessToken)
+            displayName: "Register AML pipeline with python"
